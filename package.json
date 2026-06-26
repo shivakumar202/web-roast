@@ -1,0 +1,11 @@
+{
+  "name": "roast",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./src/input.css -o ./dist/output.css --content ./index.html"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.4"
+  }
+}

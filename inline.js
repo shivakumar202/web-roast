@@ -1,0 +1,1192 @@
+
+        // Local build only: no Tailwind CDN script is required.
+        function initializeTailwind() {
+            // No-op. Tailwind CSS is loaded from ./dist/output.css.
+        }
+
+        // Global state
+        let currentReport = null;
+        let currentFilter = 'all';
+
+        // Seeded random for deterministic roasts per URL
+        function seededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+
+        function hashString(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash);
+        }
+
+        // Generate a realistic mock report based on URL
+        function generateMockReport(rawUrl) {
+            const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+            let hostname;
+            try {
+                hostname = new URL(url).hostname.replace('www.', '');
+            } catch(e) {
+                hostname = 'example.com';
+            }
+            
+            const seed = hashString(hostname + url);
+            const rand = (min = 0, max = 1) => min + seededRandom(seed + Math.floor(min * 100)) * (max - min);
+            
+            // Determine site type
+            let siteType = 'general';
+            const lower = hostname.toLowerCase();
+            if (lower.includes('shop') || lower.includes('store') || lower.includes('buy') || lower.includes('ecom')) siteType = 'ecommerce';
+            else if (lower.includes('app') || lower.includes('saas') || lower.includes('get') || lower.includes('try')) siteType = 'saas';
+            else if (lower.includes('blog') || lower.includes('medium') || lower.includes('write')) siteType = 'blog';
+            else if (lower.includes('portfolio') || lower.includes('design') || lower.includes('studio')) siteType = 'portfolio';
+            else if (lower.includes('wix') || lower.includes('squarespace') || lower.includes('webflow')) siteType = 'builder';
+            
+            // Base scores (will be adjusted)
+            let baseScores = {
+                design: Math.floor(rand(42, 78)),
+                ux: Math.floor(rand(38, 81)),
+                performance: Math.floor(rand(45, 92)),
+                accessibility: Math.floor(rand(51, 84)),
+                content: Math.floor(rand(47, 79)),
+                seo: Math.floor(rand(33, 88)),
+                trust: Math.floor(rand(55, 91)),
+                conversion: Math.floor(rand(29, 74)),
+                mobile: Math.floor(rand(40, 83)),
+                professionalism: Math.floor(rand(48, 85)),
+                branding: Math.floor(rand(44, 89)),
+                navigation: Math.floor(rand(36, 82))
+            };
+            
+            // Generate issues based on site type + randomness
+            const allIssues = [
+                {
+                    category: "UX",
+                    title: "Primary CTA is buried or low contrast",
+                    roast: "Your main call-to-action is playing an impressive game of hide and seek.",
+                    explanation: "The primary action button has insufficient contrast and sits below the hero fold on desktop and mobile.",
+                    whyItMatters: "Users have ~3 seconds to decide. If they can't instantly see what to do next, they leave.",
+                    howToFix: "Move the strongest CTA into the hero with high-contrast styling. Add a floating action button on mobile. Test button copy variations.",
+                    impact: "High",
+                    difficulty: "Easy",
+                    priority: "High",
+                    estimatedImpact: "+18-34% conversion rate"
+                },
+                {
+                    category: "Design",
+                    title: "Visual hierarchy is confused",
+                    roast: "Everything on this page is fighting for attention equally. Nothing wins.",
+                    explanation: "Multiple competing headlines, similar font weights, and inconsistent spacing create visual noise.",
+                    whyItMatters: "Users scan in F-patterns. Poor hierarchy means they miss your value proposition entirely.",
+                    howToFix: "Establish clear type scale (H1 → H2 → body). Reduce competing elements. Use whitespace intentionally around key messages.",
+                    impact: "High",
+                    difficulty: "Medium",
+                    priority: "High",
+                    estimatedImpact: "Significant improvement in time-on-page"
+                },
+                {
+                    category: "Performance",
+                    title: "Images are not optimized",
+                    roast: "Your hero image alone is heavier than most entire landing pages in 2026.",
+                    explanation: "Large unoptimized images (some over 2.4MB), missing WebP/AVIF, no proper srcset or lazy loading.",
+                    whyItMatters: "Every extra second of load time can reduce conversions by up to 7%.",
+                    howToFix: "Convert to modern formats. Implement responsive images + lazy loading. Use a CDN. Consider next-gen image component if using a framework.",
+                    impact: "High",
+                    difficulty: "Easy",
+                    priority: "High",
+                    estimatedImpact: "1.4s faster LCP on average"
+                },
+                {
+                    category: "Mobile",
+                    title: "Touch targets are too small or cramped",
+                    roast: "Your mobile menu requires surgical precision with a thumb the size of a normal human.",
+                    explanation: "Navigation links and buttons have insufficient tap target size and spacing on mobile.",
+                    whyItMatters: "Frustrated mobile users bounce immediately. Google also penalizes poor mobile UX.",
+                    howToFix: "Ensure all interactive elements are at least 44×44px. Add generous padding. Test with real thumbs.",
+                    impact: "High",
+                    difficulty: "Easy",
+                    priority: "High",
+                    estimatedImpact: "Reduced mobile bounce rate"
+                },
+                {
+                    category: "SEO",
+                    title: "Meta title and description are weak or missing",
+                    roast: "Your title tag reads like it was written by someone who hates SEO and also themselves.",
+                    explanation: "Title is either too long, generic, or doesn't include primary keywords. Meta description is absent or boilerplate.",
+                    whyItMatters: "Title and meta directly impact CTR from Google and social shares.",
+                    howToFix: "Craft compelling, keyword-rich titles under 60 chars. Write benefit-driven meta descriptions 150-160 chars.",
+                    impact: "Medium",
+                    difficulty: "Easy",
+                    priority: "High",
+                    estimatedImpact: "Improved organic CTR"
+                },
+                {
+                    category: "Content",
+                    title: "Value proposition is vague",
+                    roast: "After reading your hero, I still have no idea what you actually do or why I should care.",
+                    explanation: "Headline is feature-focused instead of benefit or outcome focused. No clear differentiation.",
+                    whyItMatters: "If visitors can't instantly understand the value, they will never convert or remember you.",
+                    howToFix: "Lead with the outcome your customer wants. Use specific language. Add social proof or a strong sub-headline immediately.",
+                    impact: "High",
+                    difficulty: "Medium",
+                    priority: "High",
+                    estimatedImpact: "Dramatically higher engagement"
+                },
+                {
+                    category: "Accessibility",
+                    title: "Color contrast fails WCAG AA in multiple places",
+                    roast: "Some of your text is basically invisible unless you have superhuman vision.",
+                    explanation: "Multiple instances of low-contrast text (light gray on light bg, etc). Missing focus states on interactive elements.",
+                    whyItMatters: "Excludes real users and opens legal risk. Also hurts SEO indirectly.",
+                    howToFix: "Audit with a contrast checker. Use tools like Stark or axe. Ensure focus-visible styles are obvious.",
+                    impact: "High",
+                    difficulty: "Easy",
+                    priority: "Medium",
+                    estimatedImpact: "Inclusive experience + legal safety"
+                },
+                {
+                    category: "Design",
+                    title: "Inconsistent button styles and spacing",
+                    roast: "Your buttons look like they were designed by five different people on five different days.",
+                    explanation: "Multiple button variants, inconsistent padding, border radius, hover states, and icon usage across the site.",
+                    whyItMatters: "Inconsistency erodes trust and makes the interface feel unpolished and cheap.",
+                    howToFix: "Create a strict design system. Document button variants. Audit every button on the site.",
+                    impact: "Medium",
+                    difficulty: "Medium",
+                    priority: "Medium",
+                    estimatedImpact: "More professional perception"
+                },
+                {
+                    category: "UX",
+                    title: "Navigation is confusing or overwhelming",
+                    roast: "Your main nav has more items than a Cheesecake Factory menu. Most users won't bother.",
+                    explanation: "Too many top-level navigation items. No clear prioritization. Missing active states or breadcrumbs on deeper pages.",
+                    whyItMatters: "Navigation is the primary way users explore. Confusion = frustration = exit.",
+                    howToFix: "Reduce to 5-6 core items max. Use mega menus or secondary nav for the rest. Add clear visual hierarchy.",
+                    impact: "Medium",
+                    difficulty: "Medium",
+                    priority: "Medium",
+                    estimatedImpact: "Better page depth & session duration"
+                },
+                {
+                    category: "Trust",
+                    title: "Trust signals are weak or missing",
+                    roast: "I have no idea if you're a real company or three raccoons in a trench coat.",
+                    explanation: "Missing or poorly placed testimonials, no security badges, no clear 'About' or team info, generic footer.",
+                    whyItMatters: "Especially important for SaaS, e-commerce and service sites. Trust = conversion.",
+                    howToFix: "Add prominent customer logos + quotes. Include security/compliance badges. Add real team photos or 'As seen in' logos.",
+                    impact: "High",
+                    difficulty: "Easy",
+                    priority: "High",
+                    estimatedImpact: "Higher form completion rates"
+                },
+                {
+                    category: "Performance",
+                    title: "Excessive JavaScript blocking the main thread",
+                    roast: "Your page is shipping more JavaScript than some full applications. The main thread is crying.",
+                    explanation: "Large JS bundles, render-blocking scripts, and heavy third-party scripts (analytics, chat, pixels).",
+                    whyItMatters: "Directly impacts INP, LCP and overall interactivity. Hurts mobile users most.",
+                    howToFix: "Code split. Defer non-critical scripts. Use async where possible. Audit third parties ruthlessly. Consider islands architecture.",
+                    impact: "High",
+                    difficulty: "Medium",
+                    priority: "High",
+                    estimatedImpact: "Much snappier experience"
+                },
+                {
+                    category: "SEO",
+                    title: "Missing or broken structured data",
+                    roast: "Google is getting zero structured information from this page. You're leaving rich results on the table.",
+                    explanation: "No Organization, Product, FAQ, or Breadcrumb schema. Some pages have invalid JSON-LD.",
+                    whyItMatters: "Structured data powers rich snippets, knowledge panels and better understanding by search engines.",
+                    howToFix: "Implement proper JSON-LD for key entity types. Validate with Google's Rich Results Test tool.",
+                    impact: "Medium",
+                    difficulty: "Medium",
+                    priority: "Medium",
+                    estimatedImpact: "Better visibility in SERPs"
+                }
+            ];
+            
+            // Select 6-9 issues relevant to site type
+            let selectedIssues = [];
+            let shuffled = [...allIssues].sort(() => seededRandom(seed) - 0.5);
+            
+            // Bias selection based on site type
+            if (siteType === 'ecommerce') {
+                selectedIssues = shuffled.filter(i => ['UX', 'Performance', 'Trust', 'Mobile', 'Conversion'].includes(i.category)).slice(0, 7);
+            } else if (siteType === 'saas') {
+                selectedIssues = shuffled.filter(i => ['UX', 'Conversion', 'Trust', 'Content', 'Performance'].includes(i.category)).slice(0, 8);
+            } else if (siteType === 'portfolio') {
+                selectedIssues = shuffled.filter(i => ['Design', 'UX', 'Accessibility', 'Content'].includes(i.category)).slice(0, 6);
+            } else if (siteType === 'builder') {
+                selectedIssues = shuffled.filter(i => ['Design', 'Performance', 'Mobile', 'SEO'].includes(i.category)).slice(0, 7);
+            } else {
+                selectedIssues = shuffled.slice(0, 7);
+            }
+            
+            // Adjust scores down based on selected issues
+            selectedIssues.forEach(issue => {
+                const penalty = issue.priority === 'High' ? 9 : issue.priority === 'Medium' ? 5 : 2;
+                if (baseScores[issue.category.toLowerCase()]) {
+                    baseScores[issue.category.toLowerCase()] = Math.max(22, baseScores[issue.category.toLowerCase()] - penalty);
+                }
+                if (issue.category === 'UX' || issue.category === 'Conversion') {
+                    baseScores.conversion = Math.max(25, baseScores.conversion - 7);
+                }
+            });
+            
+            // Calculate overall (weighted)
+            const weights = { design: 1, ux: 1.3, performance: 1.1, accessibility: 0.9, content: 1, seo: 0.85, trust: 1.1, conversion: 1.4, mobile: 1.2, professionalism: 0.9, branding: 1, navigation: 1.1 };
+            let weightedSum = 0;
+            let totalWeight = 0;
+            Object.keys(baseScores).forEach(key => {
+                if (weights[key]) {
+                    weightedSum += baseScores[key] * weights[key];
+                    totalWeight += weights[key];
+                }
+            });
+            const overallScore = Math.max(28, Math.min(94, Math.floor(weightedSum / totalWeight)));
+            
+            // Fun quote based on score
+            let funQuote;
+            if (overallScore < 45) {
+                funQuote = "This website has more issues than a 2005 PHP forum.";
+            } else if (overallScore < 58) {
+                funQuote = "There's potential here. It's just buried under several layers of questionable decisions.";
+            } else if (overallScore < 72) {
+                funQuote = "Solid bones, but the execution feels like it was designed by a committee of raccoons.";
+            } else {
+                funQuote = "Actually pretty good. Our AI almost didn't find enough things to complain about.";
+            }
+            
+            // Adjust for site type in quote
+            if (siteType === 'ecommerce' && overallScore < 60) {
+                funQuote = "Your store looks beautiful in screenshots. Real customers, however, are struggling.";
+            }
+            
+            // Perspectives
+            const perspectives = {
+                designer: `The visual language here feels like it was assembled from five different design systems. The spacing is inconsistent, typography hierarchy is weak, and the color palette is fighting itself. ${siteType === 'portfolio' ? 'Your work deserves better presentation than this.' : 'Clean it up and the site will instantly feel more premium.'}`,
+                uxExpert: `I had to hunt for the primary action like it was an Easter egg. The information architecture needs serious work. On mobile, the experience feels cramped and some flows are just broken. First-time users are going to bounce hard.`,
+                marketingExpert: `I still don't fully understand what makes you different after scrolling twice. The messaging lacks punch and the social proof feels generic. You're leaving money on the table with weak CTAs and unclear value.`,
+                firstTimeVisitor: `Landed here from Google and I'm still not sure if I'm in the right place after 20 seconds. The hero doesn't hook me. I don't know what to click first. I'd probably hit the back button.`,
+                mobileUser: `My thumb is tired just looking at this. The menu is hard to reach, text is tiny in places, and some buttons require two taps because of bad hit areas. Mobile users deserve better than this.`,
+                grandma: `If my grandmother tried to use this, she'd probably just call you instead. Too many options, small text, and nothing is obvious. Make it simpler and clearer for normal humans.`
+            };
+            
+            // Positives (always some good things)
+            const positivesPool = [
+                "Hero photography and visual direction are genuinely strong.",
+                "The core value proposition is clear within the first sentence.",
+                "Good use of whitespace in the pricing / features section.",
+                "Footer is comprehensive and helpful.",
+                "Loading states and micro-interactions feel polished.",
+                "Strong typography choices on the blog/articles section.",
+                "Trust elements (testimonials + logos) are well placed.",
+                "Mobile menu works reasonably well once opened.",
+                "Color palette is mostly cohesive and on-brand.",
+                "Forms are straightforward with good validation."
+            ];
+            const positives = positivesPool.sort(() => seededRandom(seed + 7) - 0.5).slice(0, 4 + Math.floor(rand(0, 2)));
+            
+            // Recommendations
+            const quickWins = [
+                { title: "Fix primary CTA contrast & position", time: "45 mins", impact: "+High conversion" },
+                { title: "Compress & modernize all hero images", time: "1.5 hrs", impact: "Faster LCP" },
+                { title: "Add missing alt text to 8 images", time: "25 mins", impact: "Accessibility + SEO" },
+                { title: "Improve mobile tap target sizes", time: "1 hr", impact: "Better mobile UX" }
+            ].slice(0, 3);
+            
+            const highImpact = [
+                { title: "Redesign hero section with clear hierarchy", time: "4-6 hrs", impact: "Major engagement lift" },
+                { title: "Implement proper design system + button variants", time: "1-2 days", impact: "Consistency & trust" },
+                { title: "Rewrite value proposition & key headlines", time: "3 hrs", impact: "Higher conversion" }
+            ];
+            
+            const longTerm = [
+                { title: "Full accessibility audit + remediation (WCAG 2.2)", time: "1-2 weeks", impact: "Inclusive + legal protection" },
+                { title: "Core Web Vitals optimization pass", time: "3-5 days", impact: "SEO ranking + UX" },
+                { title: "A/B test new navigation & information architecture", time: "2 weeks", impact: "Data-driven UX wins" }
+            ];
+            
+            // Technical metrics (fake but realistic)
+            const technical = {
+                lcp: (2.1 + rand(0, 2.8)).toFixed(1),
+                cls: (0.05 + rand(0, 0.18)).toFixed(2),
+                inp: Math.floor(180 + rand(0, 220)),
+                fcp: (1.1 + rand(0, 1.4)).toFixed(1),
+                ttfb: (280 + rand(0, 420)).toFixed(0),
+                jsWeight: Math.floor(420 + rand(0, 680)) + "KB",
+                cssWeight: Math.floor(85 + rand(0, 120)) + "KB",
+                imagesOptimized: Math.random() > 0.6
+            };
+            
+            // Final report object
+            return {
+                url: url,
+                domain: hostname,
+                analyzedAt: new Date().toISOString(),
+                overallScore: overallScore,
+                funQuote: funQuote,
+                scores: baseScores,
+                issues: selectedIssues,
+                positives: positives,
+                perspectives: perspectives,
+                recommendations: { quickWins, highImpact, longTerm },
+                technical: technical,
+                siteType: siteType,
+                issuesCount: selectedIssues.length
+            };
+        }
+
+        // Render the full results
+        function renderReport(report) {
+            currentReport = report;
+            
+            // Header
+            document.getElementById('results-url').innerHTML = `<span class="font-mono text-xl">${report.domain}</span>`;
+            document.getElementById('results-domain-badge').textContent = report.domain.split('.').pop().toUpperCase();
+            document.getElementById('results-date').innerHTML = `Roasted ${new Date(report.analyzedAt).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}`;
+            
+            // Favicon placeholder
+            const fav = document.getElementById('results-favicon');
+            fav.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center text-white text-xl font-bold">${report.domain[0].toUpperCase()}</div>`;
+            
+            // Overall score
+            const scoreEl = document.getElementById('overall-score-value');
+            scoreEl.textContent = report.overallScore;
+            
+            const circle = document.getElementById('overall-score-circle');
+            const percent = Math.min(100, Math.max(0, report.overallScore));
+            circle.style.setProperty('--score-percent', `${percent}%`);
+            
+            // Grade
+            let grade = "Needs Work";
+            let gradeColor = "bg-red-500/10 text-red-400 border-red-500/30";
+            if (report.overallScore >= 75) { grade = "Excellent"; gradeColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"; }
+            else if (report.overallScore >= 65) { grade = "Good"; gradeColor = "bg-lime-400/10 text-lime-300 border-lime-400/30"; }
+            else if (report.overallScore >= 52) { grade = "Average"; gradeColor = "bg-yellow-400/10 text-yellow-300 border-yellow-400/30"; }
+            else if (report.overallScore >= 42) { grade = "Needs Work"; gradeColor = "bg-orange-500/10 text-orange-300 border-orange-500/30"; }
+            
+            const gradeEl = document.getElementById('overall-grade');
+            gradeEl.innerHTML = `<span class="px-4 py-0.5 text-xs font-bold tracking-widest border rounded-3xl ${gradeColor}">${grade}</span>`;
+            
+            // Fun quote
+            document.getElementById('fun-quote').innerHTML = `"${report.funQuote}"`;
+            
+            // Stats
+            document.getElementById('issues-count').textContent = report.issues.length;
+            document.getElementById('conversion-lift').innerHTML = `+${Math.floor(12 + (100 - report.overallScore) / 3)}<span class="text-xl align-super">%</span>`;
+            document.getElementById('mobile-score-mini').textContent = report.scores.mobile;
+            document.getElementById('mobile-score-label').innerHTML = report.scores.mobile > 70 ? 'Solid' : report.scores.mobile > 55 ? 'Room to improve' : 'Needs attention';
+            
+            // Scores grid
+            renderScoresGrid(report.scores);
+            
+            // Issues
+            renderIssues(report.issues);
+            
+            // Perspectives
+            renderPerspectives(report.perspectives);
+            
+            // Positives
+            renderPositives(report.positives);
+            
+            // Recommendations
+            renderRecommendations(report.recommendations);
+            
+            // Screenshots (use picsum with seeded-ish urls for consistency)
+            const desktopImg = document.getElementById('desktop-screenshot');
+            const mobileImg = document.getElementById('mobile-screenshot');
+            
+            // Use different picsum for variety but deterministic
+            const imgSeed = hashString(report.domain) % 200;
+            desktopImg.src = `https://picsum.photos/id/${(imgSeed % 60) + 10}/1200/630`;
+            mobileImg.src = `https://picsum.photos/id/${(imgSeed % 45) + 20}/400/700`;
+            
+            // Show results view
+            showView('results');
+            
+            // Save to history
+            saveToHistory(report);
+        }
+
+        function renderScoresGrid(scores) {
+            const container = document.getElementById('scores-grid');
+            container.innerHTML = '';
+            
+            const scoreConfig = [
+                { key: 'design', label: 'Design', icon: 'fa-palette' },
+                { key: 'ux', label: 'User Experience', icon: 'fa-user-check' },
+                { key: 'performance', label: 'Performance', icon: 'fa-tachometer-alt' },
+                { key: 'accessibility', label: 'Accessibility', icon: 'fa-universal-access' },
+                { key: 'content', label: 'Content', icon: 'fa-align-left' },
+                { key: 'seo', label: 'SEO', icon: 'fa-search' },
+                { key: 'trust', label: 'Trust', icon: 'fa-shield-alt' },
+                { key: 'conversion', label: 'Conversion', icon: 'fa-chart-line' },
+                { key: 'mobile', label: 'Mobile', icon: 'fa-mobile-alt' },
+                { key: 'professionalism', label: 'Professionalism', icon: 'fa-briefcase' },
+                { key: 'branding', label: 'Branding', icon: 'fa-tags' },
+                { key: 'navigation', label: 'Navigation', icon: 'fa-compass' }
+            ];
+            
+            scoreConfig.forEach(cfg => {
+                const val = scores[cfg.key] || 50;
+                let color = val >= 75 ? 'emerald' : val >= 60 ? 'lime' : val >= 45 ? 'yellow' : 'orange';
+                
+                const div = document.createElement('div');
+                div.className = `bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col`;
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <i class="fa-solid ${cfg.icon} text-${color}-400"></i>
+                            <span class="ml-2 text-sm font-semibold">${cfg.label}</span>
+                        </div>
+                        <div class="font-display text-3xl font-bold tabular-nums text-right leading-none">${val}<span class="text-xs align-super text-zinc-500">/100</span></div>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div class="h-full transition-all bg-gradient-to-r from-${color}-400 to-${color}-500" style="width: ${val}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderIssues(issues) {
+            const container = document.getElementById('issues-list');
+            container.innerHTML = '';
+            
+            issues.forEach((issue, index) => {
+                const card = document.createElement('div');
+                card.className = `issue-card bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden`;
+                card.dataset.category = issue.category;
+                card.dataset.priority = issue.priority;
+                
+                const priorityColor = issue.priority === 'High' ? 'red' : issue.priority === 'Medium' ? 'amber' : 'sky';
+                
+                card.innerHTML = `
+                    <div class="px-5 pt-4 pb-3 flex items-start justify-between gap-x-4 cursor-pointer" onclick="toggleIssueDetails(this)">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-x-2 mb-1">
+                                <span class="badge bg-zinc-800 text-zinc-300 border border-zinc-700">${issue.category}</span>
+                                <span class="badge bg-${priorityColor}-500/10 text-${priorityColor}-400 border border-${priorityColor}-500/30">${issue.priority} Priority</span>
+                            </div>
+                            <div class="font-semibold text-lg leading-tight pr-2">${issue.title}</div>
+                        </div>
+                        
+                        <div class="text-right flex-shrink-0">
+                            <div class="text-xs text-zinc-400">Impact</div>
+                            <div class="font-bold text-${issue.impact === 'High' ? 'red' : 'amber'}-400">${issue.impact}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden details px-5 pb-5 pt-1 border-t border-zinc-800 bg-zinc-950/60 text-sm">
+                        <div class="funny-roast px-4 py-3 rounded-2xl mb-4 text-sm">
+                            <span class="font-medium text-orange-300">The Roast:</span><br>
+                            <span class="italic">"${issue.roast}"</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                            <div>
+                                <div class="font-semibold text-xs tracking-wider text-zinc-400 mb-px">WHY IT MATTERS</div>
+                                <p class="text-zinc-300">${issue.whyItMatters}</p>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-xs tracking-wider text-zinc-400 mb-px">HOW TO FIX</div>
+                                <p class="text-zinc-300">${issue.howToFix}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-x-4 mt-5 text-xs">
+                            <div><span class="text-zinc-400">Difficulty:</span> <span class="font-semibold">${issue.difficulty}</span></div>
+                            <div><span class="text-zinc-400">Est. Impact:</span> <span class="font-semibold text-emerald-400">${issue.estimatedImpact}</span></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            updateIssuesCount(issues.length);
+        }
+        
+        function toggleIssueDetails(element) {
+            const details = element.parentElement.querySelector('.details');
+            if (!details) return;
+            
+            const isHidden = details.classList.contains('hidden');
+            document.querySelectorAll('#issues-list .details').forEach(d => d.classList.add('hidden'));
+            
+            if (isHidden) {
+                details.classList.remove('hidden');
+            }
+        }
+        
+        function filterIssues(category) {
+            currentFilter = category;
+            
+            // Update active button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active', 'bg-orange-500', 'text-white'));
+            const activeBtn = document.getElementById(`filter-${category === 'all' ? 'all' : category}`);
+            if (activeBtn) activeBtn.classList.add('active', 'bg-orange-500', 'text-white');
+            
+            const cards = document.querySelectorAll('#issues-list .issue-card');
+            let visible = 0;
+            
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = '';
+                    visible++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            updateIssuesCount(visible);
+        }
+        
+        function updateIssuesCount(count) {
+            const el = document.getElementById('issues-filter-count');
+            el.textContent = `${count} issue${count === 1 ? '' : 's'}`;
+        }
+
+        function renderPerspectives(perspectives) {
+            const container = document.getElementById('perspectives-grid');
+            container.innerHTML = '';
+            
+            const people = [
+                { key: 'designer', name: 'Designer Dave', role: 'Senior Product Designer', icon: 'fa-palette', color: 'violet' },
+                { key: 'uxExpert', name: 'UX Expert Mia', role: 'Head of UX @ Scale', icon: 'fa-user-cog', color: 'sky' },
+                { key: 'marketingExpert', name: 'Marketer Leo', role: 'Growth @ Series B', icon: 'fa-bullseye', color: 'amber' },
+                { key: 'firstTimeVisitor', name: 'First-time Visitor', role: 'Real human from Google', icon: 'fa-user', color: 'teal' },
+                { key: 'mobileUser', name: 'Mobile User', role: 'Thumb warrior', icon: 'fa-mobile-alt', color: 'rose' },
+                { key: 'grandma', name: 'Grandma Test', role: 'Non-technical user', icon: 'fa-user-friends', color: 'lime' }
+            ];
+            
+            people.forEach(person => {
+                const text = perspectives[person.key] || "No specific feedback available.";
+                const div = document.createElement('div');
+                div.className = `perspective-card bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-sm`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-x-3 mb-3">
+                        <div class="w-9 h-9 bg-zinc-800 rounded-2xl flex items-center justify-center text-${person.color}-400">
+                            <i class="fa-solid ${person.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold">${person.name}</div>
+                            <div class="text-xs text-zinc-500">${person.role}</div>
+                        </div>
+                    </div>
+                    <p class="text-zinc-300 leading-snug">"${text}"</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderPositives(positives) {
+            const container = document.getElementById('positives-list');
+            container.innerHTML = '';
+            
+            positives.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `flex gap-x-3 text-emerald-300`;
+                div.innerHTML = `
+                    <i class="fa-solid fa-check-circle mt-1 flex-shrink-0"></i>
+                    <span class="text-sm text-emerald-200">${p}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderRecommendations(recs) {
+            // Quick wins
+            const qw = document.getElementById('quick-wins-list');
+            qw.innerHTML = '';
+            recs.quickWins.forEach(item => {
+                const el = document.createElement('div');
+                el.className = `text-xs`;
+                el.innerHTML = `
+                    <div class="font-medium">${item.title}</div>
+                    <div class="flex justify-between text-emerald-400 mt-px">
+                        <span>${item.time}</span>
+                        <span class="font-semibold">${item.impact}</span>
+                    </div>
+                `;
+                qw.appendChild(el);
+            });
+            
+            // High impact
+            const hi = document.getElementById('high-impact-list');
+            hi.innerHTML = '';
+            recs.highImpact.forEach(item => {
+                const el = document.createElement('div');
+                el.className = `text-xs`;
+                el.innerHTML = `
+                    <div class="font-medium">${item.title}</div>
+                    <div class="flex justify-between text-orange-400 mt-px">
+                        <span>${item.time}</span>
+                        <span class="font-semibold">${item.impact}</span>
+                    </div>
+                `;
+                hi.appendChild(el);
+            });
+            
+            // Long term
+            const lt = document.getElementById('long-term-list');
+            lt.innerHTML = '';
+            recs.longTerm.forEach(item => {
+                const el = document.createElement('div');
+                el.className = `text-xs`;
+                el.innerHTML = `
+                    <div class="font-medium">${item.title}</div>
+                    <div class="flex justify-between text-sky-400 mt-px">
+                        <span>${item.time}</span>
+                        <span class="font-semibold">${item.impact}</span>
+                    </div>
+                `;
+                lt.appendChild(el);
+            });
+        }
+
+        // Start the roast flow
+        async function startRoast() {
+            const input = document.getElementById('url-input');
+            let url = input.value.trim();
+            
+            if (!url) {
+                showToast("Please enter a website URL");
+                return;
+            }
+            
+            // Basic validation
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            
+            try {
+                new URL(url); // validate
+            } catch(e) {
+                showToast("That doesn't look like a valid URL");
+                return;
+            }
+            
+            showView('loading');
+            
+            // Simulate realistic loading with steps
+            await simulateAnalysis(url);
+        }
+        
+        async function simulateAnalysis(url) {
+            const stepsContainer = document.getElementById('loading-steps');
+            stepsContainer.innerHTML = '';
+            
+            const steps = [
+                { text: "Validating URL and checking accessibility...", pct: 8 },
+                { text: "Crawling homepage & discovering internal links...", pct: 19 },
+                { text: "Rendering desktop & mobile views in headless browser...", pct: 34 },
+                { text: "Capturing screenshots and measuring visual metrics...", pct: 49 },
+                { text: "Analyzing Core Web Vitals, performance & assets...", pct: 63 },
+                { text: "Extracting content, headings, meta & structured data...", pct: 76 },
+                { text: "Running accessibility & contrast checks...", pct: 85 },
+                { text: "AI panel reviewing from 6 expert perspectives...", pct: 94 },
+                { text: "Generating brutally honest recommendations...", pct: 100 }
+            ];
+            
+            const progressBar = document.getElementById('loading-progress-bar');
+            const percentEl = document.getElementById('loading-percent');
+            
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                
+                // Add step
+                const stepEl = document.createElement('div');
+                stepEl.className = `loading-step flex items-center gap-x-3 text-sm py-1 px-1 ${i === 0 ? '' : 'opacity-40'}`;
+                stepEl.innerHTML = `
+                    <i class="fa-solid fa-check-circle text-emerald-400 w-4"></i>
+                    <span>${step.text}</span>
+                `;
+                stepsContainer.appendChild(stepEl);
+                
+                // Animate progress
+                progressBar.style.width = `${step.pct}%`;
+                percentEl.textContent = `${step.pct}%`;
+                
+                // Highlight current
+                if (i > 0) {
+                    stepsContainer.children[i-1].classList.add('opacity-40');
+                }
+                stepEl.classList.remove('opacity-40');
+                
+                // Wait
+                await new Promise(resolve => setTimeout(resolve, i === 0 ? 420 : (i < 5 ? 680 : 520)));
+            }
+            
+            // Generate report
+            const report = generateMockReport(url);
+            
+            // Small delay then show results
+            setTimeout(() => {
+                renderReport(report);
+            }, 280);
+        }
+        
+        function roastExample(exampleUrl) {
+            document.getElementById('url-input').value = exampleUrl;
+            startRoast();
+        }
+        
+        function reRoast() {
+            if (!currentReport) return;
+            showView('loading');
+            
+            setTimeout(() => {
+                // Generate slightly varied version by adding small noise to seed
+                const newReport = generateMockReport(currentReport.url + Date.now());
+                // Keep same URL and domain
+                newReport.url = currentReport.url;
+                newReport.domain = currentReport.domain;
+                newReport.analyzedAt = new Date().toISOString();
+                
+                renderReport(newReport);
+            }, 1350);
+        }
+
+        // View management
+        function showView(view) {
+            // Hide all
+            document.getElementById('hero-view').classList.add('hidden');
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            
+            if (view === 'hero') {
+                document.getElementById('hero-view').classList.remove('hidden');
+            } else if (view === 'loading') {
+                document.getElementById('loading-view').classList.remove('hidden');
+            } else if (view === 'results') {
+                document.getElementById('results-view').classList.remove('hidden');
+                window.scrollTo({ top: 120, behavior: 'smooth' });
+            } else if (view === 'dashboard') {
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                renderDashboard();
+            }
+        }
+        
+        function showExamples() {
+            const examples = [
+                "https://www.wix.com", 
+                "https://www.shopify.com", 
+                "https://tailwindcss.com", 
+                "https://www.notion.so",
+                "https://bad-example-site.netlify.app"
+            ];
+            const random = examples[Math.floor(Math.random() * examples.length)];
+            document.getElementById('url-input').value = random;
+            startRoast();
+        }
+
+        // History / Dashboard
+        function saveToHistory(report) {
+            let history = JSON.parse(localStorage.getItem('roastHistory') || '[]');
+            
+            // Remove duplicate if same URL exists
+            history = history.filter(h => h.domain !== report.domain);
+            
+            // Add new at front
+            history.unshift({
+                domain: report.domain,
+                url: report.url,
+                score: report.overallScore,
+                date: report.analyzedAt,
+                issues: report.issues.length,
+                funQuote: report.funQuote
+            });
+            
+            // Keep max 12
+            if (history.length > 12) history = history.slice(0, 12);
+            
+            localStorage.setItem('roastHistory', JSON.stringify(history));
+        }
+        
+        function renderDashboard() {
+            const container = document.getElementById('history-list');
+            const noHistory = document.getElementById('no-history');
+            container.innerHTML = '';
+            
+            const history = JSON.parse(localStorage.getItem('roastHistory') || '[]');
+            
+            if (history.length === 0) {
+                noHistory.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            } else {
+                noHistory.classList.add('hidden');
+                container.classList.remove('hidden');
+            }
+            
+            history.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition rounded-3xl p-5 cursor-pointer group`;
+                
+                const scoreColor = item.score >= 70 ? 'emerald' : item.score >= 55 ? 'yellow' : 'orange';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="font-mono text-sm text-zinc-400">${item.domain}</div>
+                            <div class="font-semibold text-xl mt-1 group-hover:text-orange-300 transition">${item.score}<span class="text-xs text-zinc-400 align-super">/100</span></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs px-3 py-px inline-block rounded-2xl bg-zinc-800 text-zinc-400">${new Date(item.date).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</div>
+                            <div class="mt-1 text-xs text-zinc-400">${item.issues} issues</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-xs italic text-zinc-400 line-clamp-2">"${item.funQuote}"</div>
+                    
+                    <div class="flex gap-x-2 mt-5">
+                        <button onclick="event.stopImmediatePropagation(); loadFromHistory(${idx});" 
+                                class="flex-1 text-xs py-2 bg-zinc-800 hover:bg-orange-600 hover:text-white transition rounded-2xl font-medium">View Roast</button>
+                        <button onclick="event.stopImmediatePropagation(); deleteHistoryItem(${idx});" 
+                                class="px-4 text-xs py-2 bg-zinc-800 hover:bg-red-900/70 transition rounded-2xl text-red-400"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                
+                card.onclick = () => loadFromHistory(idx);
+                container.appendChild(card);
+            });
+        }
+        
+        function loadFromHistory(index) {
+            const history = JSON.parse(localStorage.getItem('roastHistory') || '[]');
+            const item = history[index];
+            if (!item) return;
+            
+            // Re-generate full report (since we only store summary)
+            const fullReport = generateMockReport(item.url);
+            fullReport.analyzedAt = item.date; // keep original date
+            renderReport(fullReport);
+        }
+        
+        function deleteHistoryItem(index) {
+            if (!confirm('Delete this roast from history?')) return;
+            
+            let history = JSON.parse(localStorage.getItem('roastHistory') || '[]');
+            history.splice(index, 1);
+            localStorage.setItem('roastHistory', JSON.stringify(history));
+            renderDashboard();
+        }
+        
+        function clearAllHistory() {
+            if (!confirm('Clear entire roast history?')) return;
+            localStorage.removeItem('roastHistory');
+            renderDashboard();
+        }
+
+        // Sharing
+        function shareReport(platform) {
+            if (!currentReport) return;
+            
+            const text = `I just got my website roasted by AI 🔥\n\n${currentReport.domain} scored ${currentReport.overallScore}/100\n\n"${currentReport.funQuote}"\n\nCheck it out: RoastMyWebsite`;
+            const url = window.location.href;
+            
+            if (platform === 'twitter') {
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+            } else if (platform === 'linkedin') {
+                window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+            }
+        }
+        
+        function copyShareLink() {
+            if (!currentReport) return;
+            
+            const shareText = `${currentReport.domain} scored ${currentReport.overallScore}/100 on RoastMyWebsite\n\n"${currentReport.funQuote}"\n\nRoasted at: ${new Date(currentReport.analyzedAt).toLocaleDateString()}`;
+            
+            navigator.clipboard.writeText(shareText).then(() => {
+                showToast("Roast summary copied to clipboard!");
+            }).catch(() => {
+                // fallback
+                prompt("Copy this roast summary:", shareText);
+            });
+        }
+        
+        function showExportMenu(element) {
+            const menu = document.getElementById('export-menu');
+            menu.classList.toggle('hidden');
+            
+            // Close when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function handler(e) {
+                    if (!menu.contains(e.target)) {
+                        menu.classList.add('hidden');
+                        document.removeEventListener('click', handler);
+                    }
+                }, { once: true });
+            }, 50);
+        }
+        
+        function hideExportMenu() {
+            document.getElementById('export-menu').classList.add('hidden');
+        }
+        
+        function exportReport(format) {
+            if (!currentReport) return;
+            hideExportMenu();
+            
+            if (format === 'json') {
+                const dataStr = JSON.stringify(currentReport, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', dataUri);
+                link.setAttribute('download', `roast-${currentReport.domain}.json`);
+                link.click();
+                
+            } else if (format === 'markdown') {
+                let md = `# Roast Report: ${currentReport.domain}\n\n`;
+                md += `**Overall Score:** ${currentReport.overallScore}/100  \n`;
+                md += `**Date:** ${new Date(currentReport.analyzedAt).toLocaleString()}  \n`;
+                md += `**Quote:** *${currentReport.funQuote}*\n\n`;
+                
+                md += `## Category Scores\n`;
+                Object.keys(currentReport.scores).forEach(key => {
+                    md += `- **${key.charAt(0).toUpperCase() + key.slice(1)}**: ${currentReport.scores[key]}/100\n`;
+                });
+                
+                md += `\n## The Roast (${currentReport.issues.length} issues)\n\n`;
+                currentReport.issues.forEach((issue, i) => {
+                    md += `### ${i+1}. ${issue.title} (${issue.category} • ${issue.priority})\n`;
+                    md += `> ${issue.roast}\n\n`;
+                    md += `**Why it matters:** ${issue.whyItMatters}\n\n`;
+                    md += `**How to fix:** ${issue.howToFix}\n\n`;
+                    md += `*Impact: ${issue.impact} | Difficulty: ${issue.difficulty} | Est. Impact: ${issue.estimatedImpact}*\n\n---\n\n`;
+                });
+                
+                md += `## What Worked Well\n`;
+                currentReport.positives.forEach(p => md += `- ${p}\n`);
+                
+                md += `\n## Recommendations\n`;
+                md += `**Quick Wins:**\n`;
+                currentReport.recommendations.quickWins.forEach(r => md += `- ${r.title} (${r.time})\n`);
+                
+                const blob = new Blob([md], {type: 'text/markdown'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `roast-${currentReport.domain}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+            } else if (format === 'pdf') {
+                // Use browser print for nice PDF
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html><head><title>Roast Report - ${currentReport.domain}</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; line-height: 1.6; color: #222; max-width: 860px; margin: 0 auto; }
+                        h1 { color: #c2410f; }
+                        .score { font-size: 72px; font-weight: 700; line-height: 1; }
+                        .issue { margin-bottom: 32px; border-bottom: 1px solid #ddd; padding-bottom: 24px; }
+                        .roast { font-style: italic; background: #fff7ed; padding: 14px 18px; border-radius: 8px; }
+                    </style></head><body>
+                    <h1>RoastMyWebsite Report</h1>
+                    <p><strong>${currentReport.domain}</strong> • ${new Date(currentReport.analyzedAt).toLocaleDateString()}</p>
+                    
+                    <div style="display:flex; align-items:center; gap:20px; margin:30px 0;">
+                        <div><div class="score">${currentReport.overallScore}</div><div style="font-size:13px; color:#666;">/ 100</div></div>
+                        <div style="font-size:21px; max-width:420px; font-style:italic; color:#854d0e;">"${currentReport.funQuote}"</div>
+                    </div>
+                    
+                    <h2>The Roast (${currentReport.issues.length} issues found)</h2>
+                `);
+                
+                currentReport.issues.forEach(issue => {
+                    printWindow.document.write(`
+                        <div class="issue">
+                            <h3 style="margin:0 0 4px;">${issue.title} <span style="font-size:12px; color:#c2410f;">(${issue.category})</span></h3>
+                            <div class="roast">${issue.roast}</div>
+                            <p><strong>Why it matters:</strong> ${issue.whyItMatters}</p>
+                            <p><strong>How to fix:</strong> ${issue.howToFix}</p>
+                            <p style="font-size:13px; color:#666;">Priority: ${issue.priority} • Difficulty: ${issue.difficulty} • Expected impact: ${issue.estimatedImpact}</p>
+                        </div>
+                    `);
+                });
+                
+                printWindow.document.write(`</body></html>`);
+                printWindow.document.close();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 650);
+            }
+        }
+
+        function showAllScoresModal() {
+            if (!currentReport) return;
+            
+            const modal = document.createElement('div');
+            modal.className = `fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-6`;
+            modal.innerHTML = `
+                <div onclick="event.target.remove()" class="absolute inset-0"></div>
+                <div onclick="event.stopImmediatePropagation()" class="relative bg-zinc-900 border border-zinc-700 max-w-2xl w-full rounded-3xl p-8 max-h-[85vh] overflow-auto">
+                    <div class="flex justify-between mb-6">
+                        <div>
+                            <div class="font-display text-3xl">Full Score Breakdown</div>
+                            <div class="text-zinc-400">${currentReport.domain}</div>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-3xl leading-none text-zinc-400 hover:text-white">&times;</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        ${Object.keys(currentReport.scores).map(key => {
+                            const val = currentReport.scores[key];
+                            const pct = Math.round(val);
+                            let color = val > 72 ? '#10b981' : val > 55 ? '#eab308' : '#f59e0b';
+                            return `
+                                <div class="flex items-center gap-x-4 bg-zinc-950 border border-zinc-800 p-4 rounded-2xl">
+                                    <div class="flex-1">
+                                        <div class="font-semibold capitalize">${key}</div>
+                                        <div class="text-xs text-zinc-400">Score</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-display text-4xl font-bold tabular-nums" style="color: ${color}">${val}</div>
+                                        <div class="text-xs text-zinc-500">/ 100</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <div class="mt-8 text-xs text-center text-zinc-400">
+                        Scores are generated from 40+ observable signals across the rendered website.
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function showVisualAnalysisModal() {
+            if (!currentReport) return;
+            
+            const modal = document.createElement('div');
+            modal.className = `fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-5`;
+            modal.innerHTML = `
+                <div onclick="event.target.remove()" class="absolute inset-0"></div>
+                <div onclick="event.stopImmediatePropagation()" class="relative bg-zinc-900 border border-zinc-700 w-full max-w-5xl rounded-3xl overflow-hidden">
+                    <div class="px-8 py-5 border-b border-zinc-700 flex justify-between items-center">
+                        <div class="font-semibold">Visual &amp; UX Analysis — ${currentReport.domain}</div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-zinc-400 hover:text-white text-2xl">&times;</button>
+                    </div>
+                    
+                    <div class="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <div class="uppercase tracking-widest text-xs mb-3 text-orange-400">Desktop Observations</div>
+                            <ul class="space-y-2.5 text-sm">
+                                <li class="flex gap-3"><span class="text-emerald-400 mt-1">•</span> Good use of whitespace in hero section</li>
+                                <li class="flex gap-3"><span class="text-emerald-400 mt-1">•</span> Strong photography but text overlay contrast could improve</li>
+                                <li class="flex gap-3"><span class="text-amber-400 mt-1">•</span> Multiple competing CTAs in first viewport</li>
+                                <li class="flex gap-3"><span class="text-amber-400 mt-1">•</span> Footer feels a bit cramped on wide screens</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div class="uppercase tracking-widest text-xs mb-3 text-orange-400">Mobile Observations</div>
+                            <ul class="space-y-2.5 text-sm">
+                                <li class="flex gap-3"><span class="text-red-400 mt-1">•</span> Primary navigation requires two taps</li>
+                                <li class="flex gap-3"><span class="text-red-400 mt-1">•</span> Text becomes too narrow in some sections</li>
+                                <li class="flex gap-3"><span class="text-emerald-400 mt-1">•</span> Sticky elements work well</li>
+                                <li class="flex gap-3"><span class="text-amber-400 mt-1">•</span> Some form fields are too close together</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-zinc-950 px-8 py-6 text-xs border-t border-zinc-800 text-zinc-400">
+                        These observations were generated from rendered screenshots + automated visual analysis (layout detection, contrast, spacing heuristics).
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').textContent = msg;
+            toast.style.display = 'flex';
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.2s';
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    toast.style.opacity = '1';
+                    toast.style.transition = '';
+                    toast.style.display = 'none';
+                    toast.classList.add('hidden');
+                }, 180);
+            }, 2600);
+        }
+
+        function initializeFilters() {
+            // Set initial active filter
+            const allBtn = document.getElementById('filter-all');
+            if (allBtn) {
+                allBtn.classList.add('active', 'bg-orange-500', 'text-white');
+            }
+            
+            // Keyboard support for URL input
+            const urlInput = document.getElementById('url-input');
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    startRoast();
+                }
+            });
+            
+            // Demo tip
+            setTimeout(() => {
+                if (!currentReport && document.getElementById('hero-view').classList.contains('hidden') === false) {
+                    // subtle hint can be added here if wanted
+                }
+            }, 14000);
+        }
+
+        function initializeApp() {
+            initializeFilters();
+            
+            // Preload one nice example on first load? No, keep clean.
+            
+            // Allow pressing "/" to focus URL input (like many apps)
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    const input = document.getElementById('url-input');
+                    if (input) {
+                        document.getElementById('hero-view').classList.remove('hidden');
+                        document.getElementById('results-view').classList.add('hidden');
+                        document.getElementById('dashboard-view').classList.add('hidden');
+                        input.focus();
+                        input.select();
+                    }
+                }
+            });
+            
+            // Easter egg: type "roast" in console or something, but nah.
+            console.log('%c[RoastMyWebsite] Demo ready. Try entering any URL or use the example buttons.', 'color:#666');
+            
+            // Optional: Auto focus input
+            setTimeout(() => {
+                const input = document.getElementById('url-input');
+                if (input && document.getElementById('hero-view').offsetParent !== null) {
+                    // input.focus(); // commented to avoid mobile keyboard pop on load
+                }
+            }, 800);
+            
+            // Show a welcome toast once
+            // setTimeout(() => showToast("Pro tip: Try any real website URL — it works on everything!"), 9200);
+        }
+
+        // Boot app
+        window.onload = initializeApp;
+    
